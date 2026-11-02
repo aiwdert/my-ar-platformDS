@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>محاكاة تفاعل الأكسدة والاختزال الناجحة</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0b0f19; font-family: sans-serif; color: white; user-select: none; }
+        #controls {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 12px; z-index: 10; width: 90%; justify-content: center;
+        }
+        button {
+            padding: 14px 20px; font-size: 15px; border: none; border-radius: 8px; 
+            cursor: pointer; font-weight: bold; color: white; transition: 0.2s; flex: 1; max-width: 180px;
+        }
+        #startBtn { background-color: #00cc66; box-shadow: 0 0 15px rgba(0,204,102,0.4); }
+        #startBtn:hover { background-color: #00ff80; }
+        #resetBtn { background-color: #555; }
+        #resetBtn:hover { background-color: #777; }
+        
+        #explanation {
+            position: absolute; top: 15px; width: 100%; text-align: center;
+            font-size: 16px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            padding: 0 15px; box-sizing: border-box; line-height: 1.4;
+        }
+        .status-box {
+            position: absolute; top: 85px; display: flex; justify-content: center; gap: 10px; width: 100%;
+            padding: 0 10px; box-sizing: border-box;
+        }
+        .atom-label {
+            background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1); flex: 1; max-width: 170px; text-align: center; font-size: 12px;
+        }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="explanation">تفاعل الأكسدة والاختزال: اضغط على الزر لمشاهدة انتقال الإلكترون!</div>
+    
+    <div class="status-box">
+        <div class="atom-label" id="naLabel">
+            <strong style="color: #ffcc00; font-size: 14px;">ذرة صوديوم (Na)</strong><br>
+            المدار الخارجي: إلكترون واحد
+        </div>
+        <div class="atom-label" id="clLabel">
+            <strong style="color: #00ffcc; font-size: 14px;">ذرة كلور (Cl)</strong><br>
+            المدار الخارجي: 7 إلكترونات
+        </div>
+    </div>
+
+    <div id="controls">
+        <button id="startBtn" onclick="startTransfer()">ابدأ الانتقال</button>
+        <button id="resetBtn" onclick="resetSimulation()">إعادة ضبط</button>
+    </div>
+
+    <canvas id="redoxCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('redoxCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let animationStage = 0; 
+        let electronProgress = 0; 
+        let angleOffset = 0;
+        let naX, naY, clX, clY;
+        let isMobile = false;
+
+        let orbit1 = 40;
+        let orbit2 = 70;
+        let orbit3 = 100;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            isMobile = window.innerWidth < 600;
+            
+            if (isMobile) {
+                orbit1 = 30; orbit2 = 55; orbit3 = 80;
+                naX = canvas.width * 0.25; clX = canvas.width * 0.75;
+                naY = canvas.height * 0.55; clY = canvas.height * 0.55;
+            } else {
+                orbit1 = 40; orbit2 = 70; orbit3 = 100;
+                naX = canvas.width * 0.3; clX = canvas.width * 0.7;
+                naY = canvas.height * 0.58; clY = canvas.height * 0.58;
+            }
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function drawSodium() {
+            ctx.beginPath();
+            ctx.arc(naX, naY, isMobile ? 18 : 28, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255, 204, 0, 0.15)";
+            ctx.strokeStyle = "#ffcc00";
+            ctx.lineWidth = 2;
+            ctx.stroke(); ctx.fill();
+            
+            ctx.fillStyle = "#ffffff";
+            ctx.font = isMobile ? "bold 13px sans-serif" : "bold 16px sans-serif";
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(animationStage === 2 ? "Na⁺" : "Na", naX, naY);
+
+            drawOrbitRing(naX, naY, orbit1);
+            drawElectronsOnOrbit(naX, naY, orbit1, 2, angleOffset * 0.5, "#ffaa00");
+
+            drawOrbitRing(naX, naY, orbit2);
+            drawElectronsOnOrbit(naX, naY, orbit2, 8, angleOffset * 0.3, "#ffaa00");
+
+            drawOrbitRing(naX, naY, orbit3);
+            if (animationStage === 0) {
+                drawElectronsOnOrbit(naX, naY, orbit3, 1, angleOffset * 0.2, "#ffaa00");
+            }
+        }
+
+        function drawChlorine() {
+            ctx.beginPath();
+            ctx.arc(clX, clY, isMobile ? 18 : 28, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(0, 255, 204, 0.15)";
+            ctx.strokeStyle = "#00ffcc";
+            ctx.lineWidth = 2;
+            ctx.stroke(); ctx.fill();
+            
+            ctx.fillStyle = "#ffffff";
+            ctx.font = isMobile ? "bold 13px sans-serif" : "bold 16px sans-serif";
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(animationStage === 2 ? "Cl⁻" : "Cl", clX, clY);
+
+            drawOrbitRing(clX, clY, orbit1);
+            drawElectronsOnOrbit(clX, clY, orbit1, 2, angleOffset * 0.5, "#00ffaa");
+
+            drawOrbitRing(clX, clY, orbit2);
+            drawElectronsOnOrbit(clX, clY, orbit2, 8, angleOffset * 0.3, "#00ffaa");
+
+            drawOrbitRing(clX, clY, orbit3);
+            let clCount = (animationStage === 2) ? 8 : 7;
+            drawElectronsOnOrbit(clX, clY, orbit3, clCount, angleOffset * 0.2, "#00ffaa");
+        }
+
+        function drawOrbitRing(x, y, radius) {
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+            ctx.closePath();
+        }
+
+        function drawElectronsOnOrbit(cx, cy, radius, count, currentAngle, color) {
+            for (let i = 0; i < count; i++) {
+                let angle = (i * (Math.PI * 2) / count) + currentAngle;
+                let ex = cx + Math.cos(angle) * radius;
+                let ey = cy + Math.sin(angle) * radius;
+                ctx.beginPath();
+                ctx.arc(ex, ey, isMobile ? 3.5 : 5, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+        function drawTransferringElectron() {
+            if (animationStage !== 1) return;
+
+            const startX = naX + orbit3;
+            const startY = naY;
+            const endX = clX - orbit3;
+            const endY = clY;
+
+            const currentX = startX + (endX - startX) * electronProgress;
+            const currentY = startY + (endY - startY) * electronProgress;
+
+            ctx.beginPath();
+            ctx.arc(currentX, currentY, isMobile ? 5 : 7, 0, Math.PI * 2);
+            ctx.fillStyle = "#ff3333";
+            ctx.fill();
+            ctx.closePath();
+
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(currentX, currentY);
+            ctx.strokeStyle = "rgba(255, 51, 51, 0.4)";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.closePath();
+
+            electronProgress += isMobile ? 0.02 : 0.015; 
+
+            if (electronProgress >= 1) {
+                animationStage = 2; 
+                document.getElementById('explanation').innerHTML = "<span style='color: #00ff80;'>اكتمل التفاعل!</span> حدثت <span style='color:#ffcc00'>أكسدة</span> للصوديوم وفقدت إلكترون، وحدث <span style='color:#00ffcc'>اختزال</span> للكلور وكسبت إلكترون لتتكون أيونات مستقرة (Na⁺ Cl⁻).";
+                document.getElementById('naLabel').innerHTML = "<strong style='color: #ffaa00; font-size: 14px;'>أيون صوديوم موجب (Na⁺)</strong><br><span style='color: #ff3333; font-weight:bold;'>[عملية أكسدة]</span>";
+                document.getElementById('clLabel').innerHTML = "<strong style='color: #00ffaa; font-size: 14px;'>أيون كلور سالب (Cl⁻)</strong><br><span style='color: #00cc66; font-weight:bold;'>[عملية اختزال]</span>";
+            }
+        }
+
+        function startTransfer() {
+            if (animationStage === 0) {
+                animationStage = 1;
+                electronProgress = 0;
+                document.getElementById('explanation').innerHTML = "الإلكترون <span style='color: #ff3333; font-weight:bold;'>يغادر الصوديوم الآن</span> متجهاً لمدار الكلور الخارجي...";
+            }
+        }
+
+        function resetSimulation() {
+            animationStage = 0;
+            electronProgress = 0;
+            resize();
+            document.getElementById('explanation').innerHTML = "تفاعل الأكسدة والاختزال: اضغط على الزر لمشاهدة انتقال الإلكترون!";
+            document.getElementById('naLabel').innerHTML = "<strong style='color: #ffcc00; font-size: 14px;'>ذرة صوديوم (Na)</strong><br>المدار الخارجي: إلكترون واحد";
+            document.getElementById('clLabel').innerHTML = "<strong style='color: #00ffcc; font-size: 14px;'>ذرة كلور (Cl)</strong><br>المدار الخارجي: 7 إلكترونات";
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            angleOffset += 0.015;
+
+            drawSodium();
+            drawChlorine();
+            drawTransferringElectron();
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
